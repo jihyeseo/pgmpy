@@ -465,3 +465,65 @@ def SHD(true_model, est_model):
     shd = shd + (np.sum((d + d.T) > 0) / 2)
 
     return int(shd)
+
+
+def SID(true_model, est_model):
+    """
+    Computes the Structural Hamming Distance between `true_model` and `est_model`.
+
+    SID is defined in https://arxiv.org/pdf/1306.1043
+
+    Parameters
+    ----------
+    true_model: pgmpy.base.DAG or pgmpy.base.CPDAG or pgmpy.models.BayesianNetwork
+        The first model to compare.
+    est_model: pgmpy.base.DAG or pgmpy.base.CPDAG or pgmpy.models.BayesianNetwork
+        The second model to compare.
+
+    Returns
+    -------
+    int:
+        If both true_model and est_model are DAGs or Bayesian Networks returns
+        an integer.
+
+    Examples
+    --------
+    >>> from pgmpy.metrics import SID
+    >>> from pgmpy.models import BayesianNetwork
+    >>> dag1 = BayesianNetwork([(1, 2), (2, 3)])
+    >>> dag2 = BayesianNetwork([(2, 1), (2, 3)])
+    >>> SID(dag1, dag2)
+    ?
+    """
+    if set(true_model.nodes()) != set(est_model.nodes()):
+        raise ValueError("The graphs must have the same nodes.")
+
+    nodes_list = true_model.nodes()
+
+    dag_true = nx.DiGraph(true_model.edges())
+    m1 = nx.adjacency_matrix(dag_true, nodelist=nodes_list).todense()
+
+    dag_est = nx.DiGraph(est_model.edges())
+    m2 = nx.adjacency_matrix(dag_est, nodelist=nodes_list).todense()
+
+    shd = 0
+
+    s1 = m1 + m1.T
+    s2 = m2 + m2.T
+
+    # Edges that are in m1 but not in m2 (deletions from m1)
+    ds = s1 - s2
+    ind = np.where(ds > 0)
+    m1[ind] = 0
+    shd = shd + (len(ind[0]) / 2)
+
+    # Edges that are in m2 but not in m1 (additions to m1)
+    ind = np.where(ds < 0)
+    m1[ind] = m2[ind]
+    shd = shd + (len(ind[0]) / 2)
+
+    # Edges that need to be simply reversed
+    d = np.abs(m1 - m2)
+    shd = shd + (np.sum((d + d.T) > 0) / 2)
+
+    return int(shd)

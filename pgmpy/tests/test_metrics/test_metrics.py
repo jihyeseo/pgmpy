@@ -9,6 +9,7 @@ from pgmpy.base import DAG
 from pgmpy.estimators.CITests import chi_square
 from pgmpy.metrics import (
     SHD,
+    SID,
     correlation_score,
     fisher_c,
     implied_cis,
@@ -212,3 +213,30 @@ class TestStructuralHammingDistance(unittest.TestCase):
     def test_shd_unequal_graphs(self):
         with self.assertRaises(ValueError, msg="The graphs must have the same nodes."):
             SHD(self.dag_4, self.dag_5)
+
+
+class TestStructuralInterventionDistance(unittest.TestCase):
+    def setUp(self):
+        ebunch = [
+            ("X1", "Y1"),
+            ("X1", "Y2"),
+            ("X1", "Y3"),
+            ("X2", "Y1"),
+            ("X2", "Y2"),
+            ("X2", "Y3"),
+        ]
+        self.G = BayesianNetwork(ebunch + [("X1", "X2")])
+        self.H1 = BayesianNetwork(ebunch + [("X1", "X2"), ("Y1", "Y2")])
+        self.H2 = BayesianNetwork(ebunch + [("X2", "X1")])
+
+    def test_shd1(self):
+        self.assertEqual(SHD(self.G, self.H1), 1)
+
+    def test_shd2(self):
+        self.assertEqual(SHD(self.G, self.H2), 1)
+
+    def test_sid1(self):
+        self.assertEqual(SID(self.G, self.H1), 0)
+
+    def test_sid2(self):
+        self.assertEqual(SID(self.G, self.H2), 8)
