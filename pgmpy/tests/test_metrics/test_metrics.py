@@ -201,13 +201,13 @@ class TestStructuralHammingDistance(unittest.TestCase):
             [(1, 2), (1, 3), (4, 2), (3, 5), (4, 6), (5, 6)]
         )
 
-    def test_shd(self):
+    def test_shd1(self):
         self.assertEqual(SHD(self.dag_1, self.dag_2), 1)
 
-    def test_shd(self):
+    def test_shd2(self):
         self.assertEqual(SHD(self.dag_3, self.dag_4), 2)
 
-    def test_shd(self):
+    def test_shd_large(self):
         self.assertEqual(SHD(self.large_dag_1, self.large_dag_2), 3)
 
     def test_shd_unequal_graphs(self):
