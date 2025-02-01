@@ -472,6 +472,7 @@ def SID(true_model, est_model):
     Computes the Structural Hamming Distance between `true_model` and `est_model`.
 
     SID is defined in https://arxiv.org/pdf/1306.1043
+    Implemented in R https://github.com/fkgruber/SID_cran/tree/main/R
 
     Parameters
     ----------
