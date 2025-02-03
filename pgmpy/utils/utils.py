@@ -82,8 +82,8 @@ def get_example_model(model):
         "sangiovese",
         "mehra",
         "healthcare2",
-    "sangiovese2",
-    "mehra2" ,
+        "sangiovese2",
+        "mehra2",
     }
 
     filenames = {
@@ -139,7 +139,7 @@ def get_example_model(model):
                 content = f.read()
             reader = BIFReader(string=content.decode("utf-8"))
             return reader.get_model()
-        else path.endswith(".json"):
+        elif path.endswith(".json"):
             ##
             from pgmpy.models import BayesianNetwork
             from pgmpy.factors.discrete import TabularCPD
@@ -161,18 +161,41 @@ def get_example_model(model):
             for node, cpd_info in cpds_data.items():
                 prob = cpd_info["prob"]
                 parents = cpd_info["parents"]
+                
+                state_names = dict()
+                for p in prob:
+                    for key, state in p.items(): 
+                        values = state_names.get(key, [])
+                        if state not in values:
+                            values.append(state)
+                        state_names[key] = values
+                if parents == []:
+                    state_names[node] = state_names["Var1"]
+                    del state_names["Var1"]
+                    
+                variable_card=len(state_names[node])                        
+                elem_ct = len(prob)
+                values = [ [0]*(elem_ct//variable_card) for i in range(variable_card)]
+                row_i = 0
+                i = 0
+                for p in prob:
+                    values[row_i][i] = p["Freq"]
+                    i += 1
+                    if i == (elem_ct//variable_card):
+                        row_i += 1
+                        i = 0
+                        
+                cpd = TabularCPD(
+                    variable=node,
+                    variable_card=variable_card,
+                    values=values,
+                    evidence=parents,
+                    evidence_card=[len(state_names[p]) for p in parents],
+                    state_names=state_names,
+                )
+                cpds.append(cpd)
 
-                # Create LinearGaussianCPD for the node
-                # cpd = TabularCPD(
-                #     variable=node,
-                #     beta=[intercept] + parent_coeffs,
-                #     std=std,
-                #     evidence=parents,
-                # )
-                # cpds.append(cpd)
-
-            # Add CPDs to the model
-            # model.add_cpds(*cpds)
+            model.add_cpds(*cpds)
             return model
 
             #
@@ -198,7 +221,6 @@ def get_example_model(model):
             #     tabular_cpds.append(cpd)
             #
             # model.add_cpds(*tabular_cpds)
-
 
     elif model in cont_models:
         from pgmpy.factors.continuous import LinearGaussianCPD
