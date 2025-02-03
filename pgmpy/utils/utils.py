@@ -46,6 +46,7 @@ def get_example_model(model):
         "asia",
         "cancer",
         "earthquake",
+        "earthquake2",
         "sachs",
         "survey",
         "alarm",
@@ -74,17 +75,22 @@ def get_example_model(model):
         "magic-niab",
         "magic-irri",
         "arth150",
+        "magic-niab2",
     }
 
     hybrid_models = {
         "sangiovese",
         "mehra",
+        "healthcare2",
+    "sangiovese2",
+    "mehra2" ,
     }
 
     filenames = {
         "asia": "utils/example_models/asia.bif.gz",
         "cancer": "utils/example_models/cancer.bif.gz",
         "earthquake": "utils/example_models/earthquake.bif.gz",
+        "earthquake2": "utils/example_models/earthquake2.json",
         "sachs": "utils/example_models/sachs.bif.gz",
         "survey": "utils/example_models/survey.bif.gz",
         "alarm": "utils/example_models/alarm.bif.gz",
@@ -108,10 +114,12 @@ def get_example_model(model):
         "munin": "utils/example_models/munin.bif.gz",
         "ecoli70": "utils/example_models/ecoli70.json",
         "magic-niab": "utils/example_models/magic-niab.json",
+        "magic-niab2": "utils/example_models/magic-niab2.json",
         "magic-irri": "utils/example_models/magic-irri.json",
         "arth150": "utils/example_models/arth150.json",
-        "sangiovese": "",
-        "mehra": "",
+        "healthcare2": "utils/example_models/healthcare2.json",
+        "sangiovese2": "utils/example_models/sangiovese2.json",
+        "mehra2": "utils/example_models/mehra2.json",
     }
 
     if model not in filenames:
@@ -131,6 +139,66 @@ def get_example_model(model):
                 content = f.read()
             reader = BIFReader(string=content.decode("utf-8"))
             return reader.get_model()
+        else path.endswith(".json"):
+            ##
+            from pgmpy.models import BayesianNetwork
+            from pgmpy.factors.discrete import TabularCPD
+
+            with open(files("pgmpy") / path, "r") as f:
+                data = json.load(f)
+
+            # Extract nodes, arcs, and CPDs from the JSON file
+            nodes = data.get("nodes")
+            arcs = data.get("arcs")
+            cpds_data = data.get("cpds")
+
+            model = BayesianNetwork()
+            model.add_nodes_from(nodes)
+            model.add_edges_from(arcs)
+
+            # Create CPDs and add them to the model
+            cpds = []
+            for node, cpd_info in cpds_data.items():
+                prob = cpd_info["prob"]
+                parents = cpd_info["parents"]
+
+                # Create LinearGaussianCPD for the node
+                # cpd = TabularCPD(
+                #     variable=node,
+                #     beta=[intercept] + parent_coeffs,
+                #     std=std,
+                #     evidence=parents,
+                # )
+                # cpds.append(cpd)
+
+            # Add CPDs to the model
+            # model.add_cpds(*cpds)
+            return model
+
+            #
+            # tabular_cpds = []
+            # for var in sorted(self.variable_cpds.keys()):
+            #     values = self.variable_cpds[var]
+            #     sn = {
+            #         p_var: list(map(state_name_type, self.variable_states[p_var]))
+            #         for p_var in self.variable_parents[var]
+            #     }
+            #     sn[var] = list(map(state_name_type, self.variable_states[var]))
+            #     cpd = TabularCPD(
+            #         var,
+            #         len(self.variable_states[var]),
+            #         values,
+            #         evidence=self.variable_parents[var],
+            #         evidence_card=[
+            #             len(self.variable_states[evidence_var])
+            #             for evidence_var in self.variable_parents[var]
+            #         ],
+            #         state_names=sn,
+            #     )
+            #     tabular_cpds.append(cpd)
+            #
+            # model.add_cpds(*tabular_cpds)
+
 
     elif model in cont_models:
         from pgmpy.factors.continuous import LinearGaussianCPD
@@ -174,6 +242,7 @@ def get_example_model(model):
         return model
 
     elif model in hybrid_models:
+        ## TODO handle like continuous model.
         raise ValueError("Hybrid models aren't supported yet.")
 
 
