@@ -1,4 +1,4 @@
-bn_dataset <- mehra
+bn_dataset <- earthquake
 nodes = character()
 arcs_from = character()
 arcs_to = character()
@@ -49,4 +49,4 @@ json_dict$arcs= cbind(arcs_from, arcs_to)
 json_dict$cpds= cpds
 json_text <- toJSON(json_dict, pretty=TRUE)
 
-save(json_text, file="mehra.json")
+write(json_text, file="eart.2.json")
