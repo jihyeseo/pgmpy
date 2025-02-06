@@ -9,6 +9,7 @@ import pandas as pd
 from pgmpy.base import UndirectedGraph
 from pgmpy.global_vars import logger
 from pgmpy.independencies import Independencies
+from pgmpy.utils.parser import parse_dagitty, parse_lavaan
 
 
 class DAG(nx.DiGraph):
@@ -71,7 +72,22 @@ class DAG(nx.DiGraph):
     3
     """
 
-    def __init__(self, ebunch=None, latents=set()):
+    def __init__(
+        self,
+        ebunch=None,
+        latents=set(),
+        lavaan_str=None,
+        dagitty_str=None,
+    ):
+        if lavaan_str:
+            ebunch, latents, err_corr, _ = parse_lavaan(lavaan_str)
+            if err_corr:
+                logger.warning(
+                    f"Residual correlations {err_corr} are ignored in DAG. Use the SEM class to keep them."
+                )
+        elif dagitty_str:
+            ebunch, latents = parse_dagitty(dagitty_str)
+
         super(DAG, self).__init__(ebunch)
         self.latents = set(latents)
         cycles = []
@@ -84,6 +100,61 @@ class DAG(nx.DiGraph):
             out_str += "\nEdges indicating the path taken for a loop: "
             out_str += "".join([f"({u},{v}) " for (u, v) in cycles])
             raise ValueError(out_str)
+
+    @classmethod
+    def from_lavaan(cls, string=None, filename=None):
+        """
+        Initializes a `DAG` instance using lavaan syntax.
+
+        Parameters
+        ----------
+        string: str (default: None)
+            A `lavaan` style multiline set of regression equation representing the model.
+            Refer http://lavaan.ugent.be/tutorial/syntax1.html for details.
+
+        filename: str (default: None)
+            The filename of the file containing the model in lavaan syntax.
+
+        Examples
+        --------
+        """
+        if filename:
+            with open(filename, "r") as f:
+                lavaan_str = f.readlines()
+        elif string:
+            lavaan_str = string.split("\n")
+        else:
+            raise ValueError("Either `filename` or `string` need to be specified")
+
+        return cls(lavaan_str=lavaan_str)
+
+    @classmethod
+    def from_dagitty(cls, string=None, filename=None):
+        """
+        Initializes a `DAG` instance using DAGitty syntax.
+
+        Parameters
+        ----------
+        string: str (default: None)
+            A `DAGitty` style multiline set of regression equation representing the model.
+            Refer https://www.dagitty.net/manual-3.x.pdf#page=3.58 and
+            https://github.com/jtextor/dagitty/blob/7a657776dc8f5e5ba4e323edb028e2c2aaf29327/gui/js/dagitty.js#L3417
+
+        filename: str (default: None)
+            The filename of the file containing the model in DAGitty syntax.
+
+        Examples
+        --------
+        """
+        if filename:
+            with open(filename, "r") as f:
+                dagitty_str = f.readlines()
+        elif string:
+            dagitty_str = string.split("\n")
+        else:
+            raise ValueError("Either `filename` or `string` need to be specified")
+
+        return cls(dagitty_str=dagitty_str)
 
     def add_node(self, node, weight=None, latent=False):
         """
@@ -109,9 +180,11 @@ class DAG(nx.DiGraph):
         ['A']
 
         Adding a node with some weight.
+
         >>> G.add_node(node='B', weight=0.3)
 
         The weight of these nodes can be accessed as:
+
         >>> G.nodes['B']
         {'weight': 0.3}
         >>> G.nodes['A']
@@ -160,6 +233,7 @@ class DAG(nx.DiGraph):
         NodeView(('A', 'B', 'C'))
 
         Adding nodes with weights:
+
         >>> G.add_nodes_from(nodes=['D', 'E'], weights=[0.3, 0.6])
         >>> G.nodes['D']
         {'weight': 0.3}
@@ -213,6 +287,7 @@ class DAG(nx.DiGraph):
         OutEdgeView([('Alice', 'Bob')])
 
         When the node is not already present in the graph:
+
         >>> G.add_edge(u='Alice', v='Ankur')
         >>> G.nodes()
         NodeView(('Alice', 'Ankur', 'Bob', 'Charles'))
@@ -220,6 +295,7 @@ class DAG(nx.DiGraph):
         OutEdgeView([('Alice', 'Bob'), ('Alice', 'Ankur')])
 
         Adding edges with weight:
+
         >>> G.add_edge('Ankur', 'Maria', weight=0.1)
         >>> G.edge['Ankur']['Maria']
         {'weight': 0.1}
@@ -258,6 +334,7 @@ class DAG(nx.DiGraph):
         OutEdgeView([('Alice', 'Bob'), ('Bob', 'Charles')])
 
         When the node is not already in the model:
+
         >>> G.add_edges_from(ebunch=[('Alice', 'Ankur')])
         >>> G.nodes()
         NodeView(('Alice', 'Bob', 'Charles', 'Ankur'))
@@ -265,12 +342,17 @@ class DAG(nx.DiGraph):
         OutEdgeView([('Alice', 'Bob'), ('Bob', 'Charles'), ('Alice', 'Ankur')])
 
         Adding edges with weights:
+
         >>> G.add_edges_from([('Ankur', 'Maria'), ('Maria', 'Mason')],
         ...                  weights=[0.3, 0.5])
         >>> G.edge['Ankur']['Maria']
         {'weight': 0.3}
         >>> G.edge['Maria']['Mason']
         {'weight': 0.5}
+
+        or
+
+        >>> G.add_edges_from([('Ankur', 'Maria', 0.3), ('Maria', 'Mason', 0.5)])
         """
         ebunch = list(ebunch)
 
@@ -828,6 +910,7 @@ class DAG(nx.DiGraph):
         Examples
         --------
         Initialize a DAG
+
         >>> graph = DAG()
         >>> graph.add_edges_from([('X', 'A'),
         ...                       ('A', 'Y'),
@@ -863,7 +946,7 @@ class DAG(nx.DiGraph):
     def get_ancestral_graph(self, nodes):
         """
         Returns the ancestral graph of the given `nodes`. The ancestral graph only
-        contains the nodes which are ancestors of atleast one of the variables in
+        contains the nodes which are ancestors of at least one of the variables in
         node.
 
         Parameters

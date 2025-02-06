@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import os
 import unittest
+import warnings
 
 import networkx as nx
 import numpy as np
@@ -10,8 +12,8 @@ import pgmpy.tests.help_functions as hf
 from pgmpy.base import DAG, PDAG
 from pgmpy.estimators import (
     BayesianEstimator,
-    MaximumLikelihoodEstimator,
     ExpectationMaximization,
+    MaximumLikelihoodEstimator,
 )
 from pgmpy.factors.discrete import TabularCPD
 
@@ -348,6 +350,130 @@ class TestDAGCreation(unittest.TestCase):
 
     def tearDown(self):
         del self.graph
+
+
+class TestDAGParser(unittest.TestCase):
+    def test_from_lavaan(self):
+        model_str = """# %load model.lav
+                       # measurement model
+                         ind60 =~ x1 + x2 + x3
+                         dem60 =~ y1 + y2 + y3 + y4
+                         dem65 =~ y5 + y6 + y7 + y8
+                       # regressions
+                         dem60 ~ ind60
+                         dem65 ~ ind60 + dem60
+                       """
+        model_from_str = DAG.from_lavaan(string=model_str)
+
+        with open("test_model.lav", "w") as f:
+            f.write(model_str)
+        model_from_file = DAG.from_lavaan(filename="test_model.lav")
+        os.remove("test_model.lav")
+
+        expected_edges = set(
+            [
+                ("ind60", "x1"),
+                ("ind60", "x2"),
+                ("ind60", "x3"),
+                ("ind60", "dem60"),
+                ("ind60", "dem65"),
+                ("dem60", "dem65"),
+                ("dem60", "y1"),
+                ("dem60", "y2"),
+                ("dem60", "y3"),
+                ("dem60", "y4"),
+                ("dem65", "y5"),
+                ("dem65", "y6"),
+                ("dem65", "y7"),
+                ("dem65", "y8"),
+            ]
+        )
+
+        expected_latents = set(["dem60", "dem65", "ind60"])
+        self.assertEqual(set(model_from_str.edges()), expected_edges)
+        self.assertEqual(set(model_from_file.edges()), expected_edges)
+        self.assertEqual(set(model_from_str.latents), expected_latents)
+        self.assertEqual(set(model_from_file.latents), expected_latents)
+
+    def test_from_lavaan_with_residual_correlation(self):
+        model_str = """# %load model_with_residual_correlation.lav
+                       # measurement model
+                         ind60 =~ x1 + x2 + x3
+                       # regressions
+                         dem60 ~ ind60
+                       # residual correlations
+                         y1 ~~ y5
+                       """
+
+        model_from_str = DAG.from_lavaan(string=model_str)
+        expected_edges = set(
+            [
+                ("ind60", "x1"),
+                ("ind60", "x2"),
+                ("ind60", "x3"),
+                ("ind60", "dem60"),
+            ]
+        )
+
+        expected_latents = set(["ind60"])
+        self.assertEqual(set(model_from_str.edges()), expected_edges)
+        self.assertEqual(set(model_from_str.latents), expected_latents)
+
+    def test_from_dagitty(self):
+        model_str = """
+            dag{
+                smoking "carry matches" [e] ; cancer [o]
+                smoking -> {"carry matches" -> cancer} smoking <-> coffee
+            }"""
+        model_from_str = DAG.from_dagitty(string=model_str)
+
+        with open("test_model.dagitty", "w") as f:
+            f.write(model_str)
+        model_from_file = DAG.from_dagitty(filename="test_model.dagitty")
+        os.remove("test_model.dagitty")
+
+        expected_edges = set(
+            [
+                ("smoking", "cancer"),
+                ("smoking", "carry matches"),
+                ("carry matches", "cancer"),
+                ("u_coffee_smoking", "coffee"),
+                ("u_coffee_smoking", "smoking"),
+            ]
+        )
+
+        expected_latents = set(["u_coffee_smoking"])
+        self.assertEqual(set(model_from_str.edges()), expected_edges)
+        self.assertEqual(set(model_from_file.edges()), expected_edges)
+        self.assertEqual(set(model_from_str.latents), expected_latents)
+        self.assertEqual(set(model_from_file.latents), expected_latents)
+
+    def test_from_daggitty_single_line_with_group_of_vars(self):
+        dag = DAG.from_dagitty(
+            'dag{ bb="0,0,1,1" X [l, pos="-1.228,-1.145"] X-> {Y Z}  Z->A}'
+        )
+        self.assertEqual(set(dag.edges()), set([("X", "Z"), ("X", "Y"), ("Z", "A")]))
+        self.assertEqual(set(dag.latents), set(["X"]))
+
+    def test_from_dagitty_multiline_with_display_info(self):
+        dag = DAG.from_dagitty(
+            """
+                dag {
+                bb="-1.728,-4.67,2.587,4.156"
+                123 [pos="2.087,3.420"]
+                X.1 [pos="-1.228,-1.145"]
+                Y [pos="-0.725,-3.934"]
+                Z [latent, pos="-0.135,1.659"]
+                X.1 -> Y [pos="-0.300,-0.082"]
+                X.1 -> Z
+                Z -> 123
+                }
+        """
+        )
+        self.assertEqual(
+            set(dag.edges()), set([("X.1", "Y"), ("X.1", "Z"), ("Z", "123")])
+        )
+        self.assertEqual(set(dag.latents), set(["Z"]))
 
 
 class TestDAGMoralization(unittest.TestCase):
