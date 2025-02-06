@@ -7,6 +7,7 @@ from .metrics import (
     implied_cis,
     log_likelihood_score,
     structure_score,
+    sid_matrix,
 )
 
 __all__ = [
@@ -17,4 +18,5 @@ __all__ = [
     "fisher_c",
     "SHD",
     "SID",
+    "sid_matrix",
 ]
