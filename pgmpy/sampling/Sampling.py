@@ -101,6 +101,7 @@ class BayesianModelSampling(BayesianModelInference):
             # If values specified in partial_samples, use them. Else generate the values.
             if (partial_samples is not None) and (node in partial_samples.columns):
                 sampled[node] = partial_samples.loc[:, node].values
+                print("partial_samples", node, sampled[node])
             else:
                 cpd = self.model.get_cpds(node)
                 states = range(self.cardinality[node])
@@ -125,9 +126,11 @@ class BayesianModelSampling(BayesianModelInference):
                     sampled[node] = sample_discrete_maps(
                         states, weight_index, index_to_weight, size
                     )
+                    print("evidence", node, sampled[node])
                 else:
                     weights = cpd.values
                     sampled[node] = sample_discrete(states, weights, size)
+                    print("else", node, sampled[node])
 
         samples_df = _return_samples(
             sampled,

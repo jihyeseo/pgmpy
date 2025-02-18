@@ -1430,6 +1430,7 @@ class BayesianNetwork(DAG):
 
         # Step 4: If no evidence do a forward sampling
         if len(evidence) == 0:
+            print("forward sample", partial_samples)
             samples = BayesianModelSampling(model).forward_sample(
                 size=n_samples,
                 include_latents=include_latents,
@@ -1440,6 +1441,7 @@ class BayesianNetwork(DAG):
 
         # Step 5: If evidence; do a rejection sampling
         else:
+            print("rejection sample", partial_samples)
             samples = BayesianModelSampling(model).rejection_sample(
                 size=n_samples,
                 evidence=[(k, v) for k, v in evidence.items()],

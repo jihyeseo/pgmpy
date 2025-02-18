@@ -594,7 +594,7 @@ class DynamicBayesianNetwork(DAG):
                     raise ValueError(
                         f"CPD associated with {node} doesn't have proper parents associated with it."
                     )
-                print(node)
+                #print(node)
                 if not config.get_compute_backend().allclose(
                     cpd.to_factor().marginalize([node], inplace=False).values.flatten(),
                     compat_fns.ones(np.prod(evidence_card)),
@@ -675,8 +675,8 @@ class DynamicBayesianNetwork(DAG):
                                 values=np.reshape(cpd.values, (2, -1)),
                                 state_names=state_names.copy(),
                             )
-                    print(new_cpd)
-                    print(new_cpd.state_names)
+                    # print(new_cpd)
+                    # print(new_cpd.state_names)
                     self.add_cpds(new_cpd)
             self.check_model()
 
@@ -974,6 +974,9 @@ class DynamicBayesianNetwork(DAG):
         df.columns = new_cols
         return df
 
+        # Step 3: change state index to state names
+
+
     def simulate(
         self,
         n_samples=10,
@@ -1160,10 +1163,12 @@ class DynamicBayesianNetwork(DAG):
 
         # Step 3: If n_time_slices > 2, iterate over the time slices and generate samples
         for t_slice in range(1, n_time_slices - 1):
+            print("TIME", t_slice)
             const_bn = self.get_constant_bn(t_slice=t_slice)
             partial_colnames = [
                 str(node) + "_" + str(t_slice) for node in self._nodes()
             ]
+            print("partial_colnames", partial_colnames)
             partial_df = sampled.loc[:, partial_colnames]
             remaining_df = sampled.loc[:, ~sampled.columns.isin(partial_colnames)]
             new_samples = const_bn.simulate(
